@@ -85,7 +85,7 @@ class MyBot:
         async with ctx.typing():
             data = await YTDLSource.fetch_from_url(url, loop=self.bot.loop)
             filename = data[0]
-            voice_channel.play(discord.FFmpegPCMAudio(executable="ffmpeg.exe", source=filename))
+            voice_channel.play(discord.FFmpegPCMAudio(source=filename))
         await ctx.send('**Now playing:** {}'.format(data[1]))
         # except:
         #     await ctx.send("The bot is not connected to a voice channel.")

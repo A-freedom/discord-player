@@ -61,9 +61,10 @@ Before you start using this bot manager, make sure you have the following prereq
 
 - Once the bot is running, you can invite it to your Discord server by creating an OAuth2 URL in the Discord Developer Portal. Give it the appropriate permissions to read and send messages and connect to voice channels.
 
-- Use the defined command prefix (default: `!`) to interact with the bot. For example, `!play`, `!skip`, `!pause`, `!resume`, etc.
+- You could just type the name or Lyric and listen to the song or past the [youtube_URL]. 
 
-- Or you could just type the name or Lyric and listen to the song. 
+- Use the defined command prefix (default: `!`) to interact with the bot. For example, `!play [youtube_URL]`, `!skip`, `!pause`, `!resume`, etc.
+
 - Enjoy playing music in your Discord channels!
 
 ## Missing Features

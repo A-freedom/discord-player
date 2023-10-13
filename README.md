@@ -6,8 +6,8 @@ A simple Python-based Discord bot manager for playing music in Discord channels.
 
 Before you start using this bot manager, make sure you have the following prerequisites in place:
 
+- Docker (optional, for containerized deployment if you used docker you will not need to install the other Prerequisites ).
 - Python 3.9 installed.
-- Docker (optional, for containerized deployment).
 - FFmpeg installed. You can download it from [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html) and set the path in your system.
 
 ## Setup

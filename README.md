@@ -9,7 +9,7 @@ Before you start using this bot manager, make sure you have the following prereq
 
 - Docker (optional, for containerized deployment if you used docker you will not need to install the other Prerequisites ).
 - Python 3.9 installed.
-- FFmpeg installed. You can download it from [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html) and set the path in your system.
+- FFmpeg installed. You can download it from  [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html) and set the path in your system.
 
 ## Setup
 

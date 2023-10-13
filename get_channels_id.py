@@ -1,9 +1,9 @@
 import discord
 
 # Replace 'YOUR_BOT_TOKEN' with your actual bot token
-import my_secret
+import env
 
-TOKEN = my_secret.test_discord_token
+TOKEN = env.list_of_bots[0]['token']
 
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)

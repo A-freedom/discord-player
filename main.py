@@ -1,10 +1,10 @@
-import my_secret
+import env
 from my_bot import MyBot
 import threading
 import sys
 
 if __name__ == "__main__":
-    my_bots = my_secret.list_of_bots
+    my_bots = env.list_of_bots
 
     if not sys.gettrace() is not None:
         thread_list = []

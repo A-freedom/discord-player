@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-import my_secret
+import env
 from ytdl_source import YTDLSource
 
 
@@ -10,7 +10,7 @@ class MyBot:
         self.channel_id = channel_id
         self.token = token
         self.intents = discord.Intents().all()
-        self.bot = commands.Bot(command_prefix=my_secret.command_prefix, intents=discord.Intents().all())
+        self.bot = commands.Bot(command_prefix=env.command_prefix, intents=discord.Intents().all())
 
         @self.bot.command(name='join', help='Tells the bot to join the voice channel')
         async def join(ctx):

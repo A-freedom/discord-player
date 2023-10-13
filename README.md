@@ -63,6 +63,7 @@ Before you start using this bot manager, make sure you have the following prereq
 
 - Use the defined command prefix (default: `!`) to interact with the bot. For example, `!play`, `!skip`, `!pause`, `!resume`, etc.
 
+- Or you could just type the name or Lyric and listen to the song. 
 - Enjoy playing music in your Discord channels!
 
 ## Missing Features

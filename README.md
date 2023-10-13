@@ -1,4 +1,5 @@
-# Discord Music Bot Manager
+# Discord Player
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-518065.svg)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 A simple Python-based Discord bot manager for playing music in Discord channels. This README will guide you through the setup and usage of the Discord Music Bot Manager.
 

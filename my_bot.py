@@ -2,8 +2,6 @@ import discord
 from discord.ext import commands
 
 import my_secret
-# from check import is_valid_youtube_url
-from check import is_valid_youtube_url
 from ytdl_source import YTDLSource
 
 
@@ -22,7 +20,7 @@ class MyBot:
         async def leave(ctx):
             await self.leave(ctx)
 
-        @self.bot.command(name='play_song', help='To play song')
+        @self.bot.command(name='play', help='To play song')
         async def play_song(ctx, url):
             await self.play_song(ctx, url)
 
@@ -51,15 +49,16 @@ class MyBot:
             if message.channel.id != self.channel_id:
                 return  # Respond only in the channel the bot is in
 
+            ctx = await self.bot.get_context(message)  # Create a context for the message
+
             if message.content.startswith(my_secret.command_prefix):
-                await self.bot.process_commands(message)
-            elif is_valid_youtube_url(message.content):
-                ctx = await self.bot.get_context(message)  # Create a context for the message
-                await play_song(ctx, message.content)  # Call play_song with the context and message content
+                return await self.bot.process_commands(message)
+            # if is_valid_youtube_url(message.content):
+            return await play_song(ctx, message.content)
+            # await self.search(ctx,message.content)
 
-    def start(self):
+    def run(self):
         self.bot.run(self.token)
-
 
     async def join(self, ctx):
         if not ctx.message.author.voice:
@@ -91,6 +90,8 @@ class MyBot:
         #     await ctx.send("The bot is not connected to a voice channel.")
         # return self
 
+
+
     async def pause(self, ctx):
         voice_client = ctx.message.guild.voice_client
         if voice_client.is_playing():
@@ -98,6 +99,7 @@ class MyBot:
         else:
             await ctx.send("The bot is not playing anything at the moment.")
         return self
+
 
     async def resume(self, ctx):
         voice_client = ctx.message.guild.voice_client
@@ -107,6 +109,7 @@ class MyBot:
             await ctx.send("The bot was not playing anything before this. Use play_song command")
         return self
 
+
     async def stop(self, ctx):
         voice_client = ctx.message.guild.voice_client
         if voice_client.is_playing():
@@ -115,7 +118,6 @@ class MyBot:
             await ctx.send("The bot is not playing anything at the moment.")
         return self
 
-    def run(self):
-        self.bot.run(self.token)
 
-
+def run(self):
+    self.bot.run(self.token)

@@ -4,7 +4,7 @@ import asyncio
 from pathlib import Path
 
 # Define the output folder for downloaded files
-output_folder = Path("data/youtube")
+output_folder = Path("downloaded/youtube")
 
 # Create the output folder if it doesn't exist
 output_folder.mkdir(parents=True, exist_ok=True)
@@ -25,6 +25,7 @@ ytdl_format_options = {
 # Initialize yt_dlp instance
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
+
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
@@ -34,10 +35,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
     @classmethod
     async def fetch_from_url(cls, url, *, loop=None, stream=False):
-
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
         if 'entries' in data:
             data = data['entries'][0]
         filename = data['id'] if stream else ytdl.prepare_filename(data)
         return [filename, data['title']]
+
+    @classmethod
+    async def search_and_get_song_info(cls, search_text, loop=None):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search_text, download=False))
+        return data['entries'][0]['webpage_url']

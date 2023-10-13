@@ -41,9 +41,3 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
         filename = data['id'] if stream else ytdl.prepare_filename(data)
         return [filename, data['title']]
-
-    @classmethod
-    async def search_and_get_song_info(cls, search_text, loop=None):
-        loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search_text, download=False))
-        return data['entries'][0]['webpage_url']

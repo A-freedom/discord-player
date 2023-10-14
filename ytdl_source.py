@@ -37,10 +37,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @classmethod
     async def fetch(cls, item, *, loop=None, stream=False):
         loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(item, download=not stream))
-        if 'entries' in data:
-            data = data['entries'][0]
-        filename = data['id'] if stream else ytdl.prepare_filename(data)
+        try:
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(item, download=not stream))
+            if 'entries' in data:
+                data = data['entries'][0]
+            filename = data['id'] if stream else ytdl.prepare_filename(data)
+        except Exception:
+            # TODO log the error
+            return False
+
         return filename
 
     @classmethod

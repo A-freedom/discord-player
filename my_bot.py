@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 from discord.ext import commands
 
@@ -73,7 +75,6 @@ class MyBot:
             return await play(ctx, message.content)
             # await self.search(ctx,message.content)
 
-
     def run(self):
         self.bot.run(self.token)
 
@@ -100,46 +101,41 @@ class MyBot:
             if self.is_paused:
                 return await self.resume(ctx)
 
-            await ctx.send('searching , wait a second pleas !')
+            async def process_item(item):
+                song = await YTDLSource.search_yt(item, loop=self.bot.loop)
 
-            # this will be either the url or the name of the song
-            query = ' '.join(args)
-            song = await YTDLSource.search_yt(query, loop=self.bot.loop)
-
-            # TODO type(song) == type(True) is not cool find anther way
-            # the check below will be ture if search_yt run through an Exception
-            if type(song) == type(True):
-                return await ctx.send(
-                    "can't find the song")
-
-            await ctx.send('-> Song added to the queue : {}'.format(song['title']))
-
-            # if len(self.music_queue) > 0:
-            self.music_queue.insert(0,song)
-
-            voice_client = ctx.message.guild.voice_client
-            if not voice_client.is_playing():
+                # TODO type(song) == type(True) is not cool find anther way
+                # the check below will be ture if search_yt run through an Exception
+                if type(song) == type(True):
+                    return await ctx.send("can't find the song")
+                await ctx.send('-> Song added to the queue : {}'.format(song['title']))
+                self.music_queue.append(song)
                 return await self.play_song(ctx)
+
+            query = ' '.join(args).split('\n')
+            await asyncio.gather(*(process_item(item) for item in query))
 
     # this function used to play the first time in the self.music_queue and nothing else
     async def play_song(self, ctx):
         # noinspection PyBroadException
         # try:
-        server = ctx.message.guild
-        voice_channel = server.voice_client
+        voice_channel = ctx.message.guild.voice_client
         if not voice_channel.is_playing():
             async with ctx.typing():
-                next_song = self.music_queue.pop()
+                next_song = self.music_queue[0]
                 path = await YTDLSource.fetch(next_song['url'], loop=self.bot.loop)
                 await ctx.send('-> Now playing : {}'.format(next_song['title']))
-                voice_channel.play(discord.FFmpegPCMAudio(source=path))
 
-        await self.play_song(ctx)
+                # move to the next song on the list
+                # loop = asyncio.get_event_loop()
+                voice_channel.play(discord.FFmpegPCMAudio(source=path),
+                                   # after=lambda e: (loop.run_until_complete(self.skip(ctx)), loop.close())
+                                   )
 
-    # except Exception:
-    #     # TODO log the error
-    #     await ctx.send("somthing bad happened")
-    # return self
+                # except Exception:
+                #     # TODO log the error
+                #     await ctx.send("somthing bad happened")
+                # return self
 
     async def pause(self, ctx):
         self.is_paused = True
@@ -193,8 +189,8 @@ class MyBot:
         if voice_client.is_playing():
             voice_client.stop()
         # try to play next in the queue if it exists
+        self.music_queue.pop(0)
         return await self.play_song(ctx)
 
-
-def run(self):
-    self.bot.run(self.token)
+    def start(self):
+        self.bot.run(self.token)

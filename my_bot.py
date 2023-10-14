@@ -7,6 +7,10 @@ from ytdl_source import YTDLSource
 
 class MyBot:
     def __init__(self, token, channel_id):
+        self.music_queue = []
+        # self.is_playing = False
+        self.is_paused = False
+
         self.channel_id = channel_id
         self.token = token
         self.intents = discord.Intents().all()
@@ -21,8 +25,8 @@ class MyBot:
             await self.leave(ctx)
 
         @self.bot.command(name='play', help='To play song')
-        async def play_song(ctx, url):
-            await self.play_song(ctx, url)
+        async def play(ctx, *args):
+            await self.play(ctx, *args)
 
         @self.bot.command(name='pause', help='This command pauses the song')
         async def pause(ctx):
@@ -35,6 +39,18 @@ class MyBot:
         @self.bot.command(name='stop', help='Stops the song')
         async def stop(ctx):
             await self.stop(ctx)
+
+        @self.bot.command(name='skip', help='Stops the song')
+        async def skip(ctx):
+            await self.skip(ctx)
+
+        @self.bot.command(name='clear', help='Stops the song')
+        async def clear(ctx):
+            await self.clear(ctx)
+
+        @self.bot.command(name='queue', help='Stops the song')
+        async def queue(ctx):
+            await self.queue(ctx)
 
         @self.bot.event
         async def on_ready():
@@ -51,11 +67,12 @@ class MyBot:
 
             ctx = await self.bot.get_context(message)  # Create a context for the message
 
-            if message.content.startswith(my_secret.command_prefix):
+            if message.content.startswith(env.command_prefix):
                 return await self.bot.process_commands(message)
             # if is_valid_youtube_url(message.content):
-            return await play_song(ctx, message.content)
+            return await play(ctx, message.content)
             # await self.search(ctx,message.content)
+
 
     def run(self):
         self.bot.run(self.token)
@@ -77,22 +94,55 @@ class MyBot:
             await ctx.send("The bot is not connected to a voice channel.")
         return self
 
-    async def play_song(self, ctx, url):
+    # this function is used to hand the passing of new song to the bot
+    async def play(self, ctx, *args):
+        async with ctx.typing():
+            if self.is_paused:
+                return await self.resume(ctx)
+
+            await ctx.send('searching , wait a second pleas !')
+
+            # this will be either the url or the name of the song
+            query = ' '.join(args)
+            song = await YTDLSource.search_yt(query, loop=self.bot.loop)
+
+            # TODO type(song) == type(True) is not cool find anther way
+            # the check below will be ture if search_yt run through an Exception
+            if type(song) == type(True):
+                return await ctx.send(
+                    "can't find the song")
+
+            await ctx.send('-> Song added to the queue : {}'.format(song['title']))
+
+            # if len(self.music_queue) > 0:
+            self.music_queue.insert(0,song)
+
+            voice_client = ctx.message.guild.voice_client
+            if not voice_client.is_playing():
+                return await self.play_song(ctx)
+
+    # this function used to play the first time in the self.music_queue and nothing else
+    async def play_song(self, ctx):
+        # noinspection PyBroadException
         # try:
         server = ctx.message.guild
         voice_channel = server.voice_client
-        async with ctx.typing():
-            data = await YTDLSource.fetch_from_url(url, loop=self.bot.loop)
-            filename = data[0]
-            voice_channel.play(discord.FFmpegPCMAudio(source=filename))
-        await ctx.send('**Now playing:** {}'.format(data[1]))
-        # except:
-        #     await ctx.send("The bot is not connected to a voice channel.")
-        # return self
+        if not voice_channel.is_playing():
+            async with ctx.typing():
+                next_song = self.music_queue.pop()
+                path = await YTDLSource.fetch(next_song['url'], loop=self.bot.loop)
+                await ctx.send('-> Now playing : {}'.format(next_song['title']))
+                voice_channel.play(discord.FFmpegPCMAudio(source=path))
 
+        await self.play_song(ctx)
 
+    # except Exception:
+    #     # TODO log the error
+    #     await ctx.send("somthing bad happened")
+    # return self
 
     async def pause(self, ctx):
+        self.is_paused = True
         voice_client = ctx.message.guild.voice_client
         if voice_client.is_playing():
             voice_client.pause()
@@ -100,23 +150,50 @@ class MyBot:
             await ctx.send("The bot is not playing anything at the moment.")
         return self
 
-
     async def resume(self, ctx):
+        self.is_paused = False
         voice_client = ctx.message.guild.voice_client
         if voice_client.is_paused():
             voice_client.resume()
         else:
-            await ctx.send("The bot was not playing anything before this. Use play_song command")
-        return self
-
+            return await ctx.send("The bot was not playing anything before this. Use play_song command")
 
     async def stop(self, ctx):
+        self.is_paused = True
         voice_client = ctx.message.guild.voice_client
         if voice_client.is_playing():
             voice_client.stop()
         else:
-            await ctx.send("The bot is not playing anything at the moment.")
-        return self
+            return await ctx.send("The bot is not playing anything at the moment.")
+
+    async def queue(self, ctx):
+        retval = ""
+        # TODO fix this not clear loop
+        for i in range(0, len(self.music_queue)):
+            # display a max of 5 songs in the current queue
+            # if i > 4: break
+            retval += self.music_queue[i]['title'] + "\n\n"
+
+        if retval != "":
+            return await ctx.send(retval)
+
+        return await ctx.send("No music in queue")
+
+    async def clear(self, ctx):
+        voice_client = ctx.message.guild.voice_client
+
+        if voice_client.is_playing():
+            voice_client.stop()
+        self.music_queue.clear()
+        return await ctx.send("Music queue cleared")
+
+    async def skip(self, ctx):
+        voice_client = ctx.message.guild.voice_client
+
+        if voice_client.is_playing():
+            voice_client.stop()
+        # try to play next in the queue if it exists
+        return await self.play_song(ctx)
 
 
 def run(self):

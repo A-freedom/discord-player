@@ -1,5 +1,3 @@
-import asyncio
-
 import discord
 from discord.ext import commands
 
@@ -9,6 +7,7 @@ from ytdl_source import YTDLSource
 
 class MyBot:
     def __init__(self, token, channel_id):
+        self.songIndex = 0
         self.music_queue = []
         # self.is_playing = False
         self.is_paused = False
@@ -101,36 +100,60 @@ class MyBot:
             if self.is_paused:
                 return await self.resume(ctx)
 
-            async def process_item(item):
-                song = await YTDLSource.search_yt(item, loop=self.bot.loop)
+            query = ' '.join(args).split('\n')
+            for item in query:
+                print(item)
+                song = YTDLSource.search_yt(item)
 
                 # TODO type(song) == type(True) is not cool find anther way
                 # the check below will be ture if search_yt run through an Exception
-                if type(song) == type(True):
-                    return await ctx.send("can't find the song")
+                # if type(song) == type(True):
+                #     return await ctx.send("can't find the song")
                 await ctx.send('-> Song added to the queue : {}'.format(song['title']))
                 self.music_queue.append(song)
-                return await self.play_song(ctx)
 
-            query = ' '.join(args).split('\n')
-            await asyncio.gather(*(process_item(item) for item in query))
+                # if not self.is_playing:
+                #     self.is_playing = True
+                #     print("playing")
+                await self.play_song(ctx)
+
+            # query = ' '.join(args).split('\n')
+            # await asyncio.gather(*(process_item(item) for item in query))
 
     # this function used to play the first time in the self.music_queue and nothing else
     async def play_song(self, ctx):
-        # noinspection PyBroadException
-        # try:
         voice_channel = ctx.message.guild.voice_client
+
         if not voice_channel.is_playing():
             async with ctx.typing():
+                # Get the next song from the queue
                 next_song = self.music_queue[0]
-                path = await YTDLSource.fetch(next_song['url'], loop=self.bot.loop)
-                await ctx.send('-> Now playing : {}'.format(next_song['title']))
+                path = YTDLSource.fetch(next_song['url'])
 
-                # move to the next song on the list
-                # loop = asyncio.get_event_loop()
-                voice_channel.play(discord.FFmpegPCMAudio(source=path),
-                                   # after=lambda e: (loop.run_until_complete(self.skip(ctx)), loop.close())
-                                   )
+                await ctx.send('Now playing: {}'.format(next_song['title']))
+
+                # Define a callback function for when the song finishes
+                def after_playing(error):
+                    if error:
+                        print(f"Error while playing: {error}")
+                    else:
+                        # Remove the finished song from the queue
+                        # self.music_queue.pop(0)
+
+                        # Check if there are more songs in the queue
+                        if self.music_queue:
+                            # Get the next song
+                            next_song_ = self.music_queue[self.songIndex]
+                            self.songIndex = self.songIndex + 1
+                            path_ = YTDLSource.fetch(next_song_['url'])
+
+                            # Play the next song and set the callback again
+                            voice_channel.play(discord.FFmpegPCMAudio(source=path_), after=after_playing)
+                        else:
+                            # If no more songs in the queue, you can leave the voice channel
+                            voice_channel.stop()
+
+                after_playing(False)
 
                 # except Exception:
                 #     # TODO log the error
@@ -166,9 +189,9 @@ class MyBot:
         retval = ""
         # TODO fix this not clear loop
         for i in range(0, len(self.music_queue)):
-            # display a max of 5 songs in the current queue
-            # if i > 4: break
-            retval += self.music_queue[i]['title'] + "\n\n"
+            if i == self.songIndex:
+                retval += '--> ' + self.music_queue[i]['title'] + '\n\n'
+            retval += '    ' + self.music_queue[i]['title'] + '\n\n'
 
         if retval != "":
             return await ctx.send(retval)
@@ -181,6 +204,7 @@ class MyBot:
         if voice_client.is_playing():
             voice_client.stop()
         self.music_queue.clear()
+        self.songIndex = 0
         return await ctx.send("Music queue cleared")
 
     async def skip(self, ctx):
@@ -189,7 +213,7 @@ class MyBot:
         if voice_client.is_playing():
             voice_client.stop()
         # try to play next in the queue if it exists
-        self.music_queue.pop(0)
+        self.songIndex = self.songIndex + 1
         return await self.play_song(ctx)
 
     def start(self):

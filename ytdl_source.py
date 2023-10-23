@@ -35,10 +35,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.url = ""
 
     @classmethod
-    async def fetch(cls, item, *, loop=None, stream=False):
-        loop = loop or asyncio.get_event_loop()
+    def fetch(cls, item, *,stream=False):
         try:
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(item, download=not stream))
+            data = ytdl.extract_info(item, download=True)
             if 'entries' in data:
                 data = data['entries'][0]
             filename = data['id'] if stream else ytdl.prepare_filename(data)
@@ -49,11 +48,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return filename
 
     @classmethod
-    async def search_yt(cls, item, loop=None):
-        loop = loop or asyncio.get_event_loop()
+    def search_yt(cls, item):
         # noinspection PyBroadException
         try:
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(f"ytsearch:{item}", download=False))
+            data = ytdl.extract_info(f"ytsearch:{item}", download=False)
             if 'entries' in data:
                 data = data['entries'][0]
         except Exception:

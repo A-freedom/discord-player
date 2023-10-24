@@ -9,11 +9,8 @@ from ytdl_source import YTDLSource
 
 class MyBot:
     def __init__(self, token, channel_id):
-        # self.songIndex is starting at -1 because in play_next I call self.songIndex++ before getting the song forme
-        # the list , so when I get the first song the index will be on zero (0)
         self.songIndex = 0
         self.music_queue = []
-        # self.is_playing = False
         self.is_paused = False
 
         self.channel_id = channel_id

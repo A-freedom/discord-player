@@ -1,3 +1,5 @@
+import threading
+
 import discord
 from discord.ext import commands
 
@@ -7,6 +9,8 @@ from ytdl_source import YTDLSource
 
 class MyBot:
     def __init__(self, token, channel_id):
+        # self.songIndex is starting at -1 because in play_next I call self.songIndex++ before getting the song forme
+        # the list , so when I get the first song the index will be on zero (0)
         self.songIndex = 0
         self.music_queue = []
         # self.is_playing = False
@@ -27,31 +31,31 @@ class MyBot:
 
         @self.bot.command(name='play', help='To play song')
         async def play(ctx, *args):
-            await self.play(ctx, *args)
+            await self.play_command(ctx, *args)
 
         @self.bot.command(name='pause', help='This command pauses the song')
         async def pause(ctx):
-            await self.pause(ctx)
+            await self.pause_command(ctx)
 
         @self.bot.command(name='resume', help='Resumes the song')
         async def resume(ctx):
-            await self.resume(ctx)
+            await self.resume_command(ctx)
 
         @self.bot.command(name='stop', help='Stops the song')
         async def stop(ctx):
-            await self.stop(ctx)
+            await self.stop_command(ctx)
 
         @self.bot.command(name='skip', help='Stops the song')
         async def skip(ctx):
-            await self.skip(ctx)
+            await self.skip_command(ctx)
 
         @self.bot.command(name='clear', help='Stops the song')
         async def clear(ctx):
-            await self.clear(ctx)
+            await self.clear_command(ctx)
 
         @self.bot.command(name='queue', help='Stops the song')
         async def queue(ctx):
-            await self.queue(ctx)
+            await self.queue_command(ctx)
 
         @self.bot.event
         async def on_ready():
@@ -70,12 +74,123 @@ class MyBot:
 
             if message.content.startswith(env.command_prefix):
                 return await self.bot.process_commands(message)
-            # if is_valid_youtube_url(message.content):
-            return await play(ctx, message.content)
-            # await self.search(ctx,message.content)
 
-    def run(self):
-        self.bot.run(self.token)
+            return await play(ctx, message.content)
+
+    # this function is used to hand the passing of new song to the bot
+    async def play_command(self, ctx, *args):
+        if self.is_paused:
+            return await self.resume_command(ctx)
+
+        async with ctx.typing():
+            query = ' '.join(args).split('\n')
+            # add the first song the play list
+            first_song_info = YTDLSource.search_yt(query[0])
+            self.music_queue.append(first_song_info)
+            await ctx.send('-> Song added to the queue : {}'.format(first_song_info['title']))
+
+            voice_channel = ctx.message.guild.voice_client
+            if not voice_channel.is_playing():
+                self.play_next(error=None, go_next=False, ctx=ctx)
+
+            # adding and download the reset of the songs in a threads
+            thread_list = []
+            for item in query[1:-1]:
+                def presses():
+                    song_info = YTDLSource.search_yt(item)
+                    # the check below will be ture if search_yt run through an Exception
+                    # if not song_info:
+                    #     return await ctx.send("can't find the song")
+                    #
+                    # await ctx.send('-> Song added to the queue : {}'.format(song_info['title']))
+                    self.music_queue.append(song_info)
+
+                thread = threading.Thread(target=presses)
+                thread.start()
+
+            for thread in thread_list:
+                thread.join()
+
+    def play_next(self, error, go_next, ctx):
+        if error:
+            return print(f"Error while playing: {error}")
+        if self.is_paused:
+            return
+
+        voice_channel = ctx.message.guild.voice_client
+        voice_channel.stop()
+
+        # Check if there are more songs in the queue
+        if self.music_queue:
+            # Get the next song
+            if go_next and self.songIndex + 1 < len(self.music_queue):
+                self.songIndex = self.songIndex + 1
+            next_song_ = self.music_queue[self.songIndex]
+            return self.play(next_song_, ctx)
+
+    def play(self, next_song_, ctx):
+        voice_channel = ctx.message.guild.voice_client
+        path_ = YTDLSource.fetch(next_song_['url'])
+        # Play the next song and set the callback again
+        return voice_channel.play(discord.FFmpegPCMAudio(source=path_),
+                                  after=lambda e: (self.play_next(error=e, go_next=True, ctx=ctx)))
+
+    async def pause_command(self, ctx):
+        self.is_paused = True
+        voice_client = ctx.message.guild.voice_client
+        if voice_client.is_playing():
+            voice_client.pause_command()
+        else:
+            await ctx.send("The bot is not playing anything at the moment.")
+        return self
+
+    async def resume_command(self, ctx):
+        voice_client = ctx.message.guild.voice_client
+        if not self.music_queue:
+            return await ctx.send("The bot was not playing anything before this. Use play_song command")
+
+        if self.is_paused:
+            self.is_paused = False
+            return voice_client.resume()
+
+    async def stop_command(self, ctx):
+        self.is_paused = True
+        voice_client = ctx.message.guild.voice_client
+        if voice_client.is_playing():
+            voice_client.stop()
+        else:
+            return await ctx.send("The bot is not playing anything at the moment.")
+
+    async def queue_command(self, ctx):
+        retval = ""
+        # TODO fix this not clear loop
+        for i in range(0, len(self.music_queue)):
+            if i == self.songIndex:
+                retval += '--> ' + self.music_queue[i]['title'] + '\n\n'
+                continue
+            retval += '    ' + self.music_queue[i]['title'] + '\n\n'
+
+        if retval != "":
+            return await ctx.send(retval)
+
+        return await ctx.send("No music in queue")
+
+    async def clear_command(self, ctx):
+        self.is_paused = False
+        voice_client = ctx.message.guild.voice_client
+        if voice_client.is_playing():
+            voice_client.stop()
+        self.music_queue.clear()
+        self.songIndex = 0
+        return await ctx.send("Music queue cleared")
+
+    async def skip_command(self, ctx):
+        voice_client = ctx.message.guild.voice_client
+
+        if voice_client.is_playing():
+            voice_client.stop()
+        # try to play next in the queue if it exists
+        return self.play_next(error=None, ctx=ctx, go_next=True)
 
     async def join(self, ctx):
         if not ctx.message.author.voice:
@@ -93,128 +208,6 @@ class MyBot:
         else:
             await ctx.send("The bot is not connected to a voice channel.")
         return self
-
-    # this function is used to hand the passing of new song to the bot
-    async def play(self, ctx, *args):
-        async with ctx.typing():
-            if self.is_paused:
-                return await self.resume(ctx)
-
-            query = ' '.join(args).split('\n')
-            for item in query:
-                print(item)
-                song = YTDLSource.search_yt(item)
-
-                # TODO type(song) == type(True) is not cool find anther way
-                # the check below will be ture if search_yt run through an Exception
-                # if type(song) == type(True):
-                #     return await ctx.send("can't find the song")
-                await ctx.send('-> Song added to the queue : {}'.format(song['title']))
-                self.music_queue.append(song)
-
-                # if not self.is_playing:
-                #     self.is_playing = True
-                #     print("playing")
-                await self.play_song(ctx)
-
-            # query = ' '.join(args).split('\n')
-            # await asyncio.gather(*(process_item(item) for item in query))
-
-    # this function used to play the first time in the self.music_queue and nothing else
-    async def play_song(self, ctx):
-        voice_channel = ctx.message.guild.voice_client
-
-        if not voice_channel.is_playing():
-            async with ctx.typing():
-                # Get the next song from the queue
-                next_song = self.music_queue[0]
-                path = YTDLSource.fetch(next_song['url'])
-
-                await ctx.send('Now playing: {}'.format(next_song['title']))
-
-                # Define a callback function for when the song finishes
-                def after_playing(error):
-                    if error:
-                        print(f"Error while playing: {error}")
-                    else:
-                        # Remove the finished song from the queue
-                        # self.music_queue.pop(0)
-
-                        # Check if there are more songs in the queue
-                        if self.music_queue:
-                            # Get the next song
-                            next_song_ = self.music_queue[self.songIndex]
-                            self.songIndex = self.songIndex + 1
-                            path_ = YTDLSource.fetch(next_song_['url'])
-
-                            # Play the next song and set the callback again
-                            voice_channel.play(discord.FFmpegPCMAudio(source=path_), after=after_playing)
-                        else:
-                            # If no more songs in the queue, you can leave the voice channel
-                            voice_channel.stop()
-
-                after_playing(False)
-
-                # except Exception:
-                #     # TODO log the error
-                #     await ctx.send("somthing bad happened")
-                # return self
-
-    async def pause(self, ctx):
-        self.is_paused = True
-        voice_client = ctx.message.guild.voice_client
-        if voice_client.is_playing():
-            voice_client.pause()
-        else:
-            await ctx.send("The bot is not playing anything at the moment.")
-        return self
-
-    async def resume(self, ctx):
-        self.is_paused = False
-        voice_client = ctx.message.guild.voice_client
-        if voice_client.is_paused():
-            voice_client.resume()
-        else:
-            return await ctx.send("The bot was not playing anything before this. Use play_song command")
-
-    async def stop(self, ctx):
-        self.is_paused = True
-        voice_client = ctx.message.guild.voice_client
-        if voice_client.is_playing():
-            voice_client.stop()
-        else:
-            return await ctx.send("The bot is not playing anything at the moment.")
-
-    async def queue(self, ctx):
-        retval = ""
-        # TODO fix this not clear loop
-        for i in range(0, len(self.music_queue)):
-            if i == self.songIndex:
-                retval += '--> ' + self.music_queue[i]['title'] + '\n\n'
-            retval += '    ' + self.music_queue[i]['title'] + '\n\n'
-
-        if retval != "":
-            return await ctx.send(retval)
-
-        return await ctx.send("No music in queue")
-
-    async def clear(self, ctx):
-        voice_client = ctx.message.guild.voice_client
-
-        if voice_client.is_playing():
-            voice_client.stop()
-        self.music_queue.clear()
-        self.songIndex = 0
-        return await ctx.send("Music queue cleared")
-
-    async def skip(self, ctx):
-        voice_client = ctx.message.guild.voice_client
-
-        if voice_client.is_playing():
-            voice_client.stop()
-        # try to play next in the queue if it exists
-        self.songIndex = self.songIndex + 1
-        return await self.play_song(ctx)
 
     def start(self):
         self.bot.run(self.token)

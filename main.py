@@ -10,7 +10,7 @@ if __name__ == "__main__":
         thread_list = []
         for bot_info in my_bots:
             bot = MyBot(bot_info['token'], bot_info['channel_id'])
-            thread = threading.Thread(target=bot.start, name=bot_info['token'])
+            thread = threading.Thread(target=bot.start(), name=bot_info['token'])
             thread_list.append(thread)
             thread.start()
 

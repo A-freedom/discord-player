@@ -1,4 +1,3 @@
-import asyncio
 from pathlib import Path
 
 import discord
@@ -34,8 +33,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.title = data.get('title')
         self.url = ""
 
+    # noinspection PyBroadException
     @classmethod
-    def fetch(cls, item, *,stream=False):
+    def fetch(cls, item, *, stream=False):
         try:
             data = ytdl.extract_info(item, download=True)
             if 'entries' in data:
@@ -49,7 +49,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
     @classmethod
     def search_yt(cls, item):
-        # noinspection PyBroadException
         try:
             data = ytdl.extract_info(f"ytsearch:{item}", download=False)
             if 'entries' in data:

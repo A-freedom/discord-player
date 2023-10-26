@@ -1,25 +1,23 @@
-import env
+import pytest
+import asyncio
 
-import unittest
-from unittest.mock import Mock
-from my_bot import MyBot  # Import your bot class from my_bot.py
+# An asynchronous function that adds two numbers
+async def async_add(a, b):
+    await asyncio.sleep(1)  # Simulate some asynchronous work
+    return a + b
 
-class TestMyBot(unittest.TestCase):
-    def setUp(self):
-        # Initialize your bot instance with mock data (replace with your actual token and channel ID)
-        self.bot = MyBot(token=env.list_of_bots[0]['token'], channel_id=env.list_of_bots[0]['channel_id'])
+# Use pytest.mark.asyncio to define asynchronous test functions
+@pytest.mark.asyncio
+async def test_async_add_positive_numbers():
+    result = await async_add(3, 4)
+    assert result == 7
 
-    def test_play_command(self):
-        # Create a mock context with a fake message content
-        ctx = Mock()
-        ctx.send = Mock()
-        ctx.message.guild.voice_client.is_playing.return_value = False  # Simulate not playing
+@pytest.mark.asyncio
+async def test_async_add_negative_numbers():
+    result = await async_add(-2, -5)
+    assert result == -7
 
-        # Call the play command with the mock context and some example arguments
-        self.bot.play_command(ctx, "believer")
-
-        # Assert that the bot responded correctly (you may need to adjust this depending on your bot's behavior)
-        ctx.send.assert_called_once_with('-> Song added to the queue : YourSongTitle')
-
-if __name__ == '__main__':
-    unittest.main()
+@pytest.mark.asyncio
+async def test_async_add_mixed_numbers():
+    result = await async_add(10, -5)
+    assert result == 5215

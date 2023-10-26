@@ -1,3 +1,4 @@
+import asyncio
 import threading
 
 import discord
@@ -90,23 +91,19 @@ class MyBot:
             if not voice_channel.is_playing():
                 self.play_next(error=None, go_next=False, ctx=ctx)
 
-            # adding and download the reset of the songs in a threads
-            thread_list = []
-            for item in query[1:-1]:
-                def presses():
-                    song_info = YTDLSource.search_yt(item)
-                    # the check below will be ture if search_yt run through an Exception
-                    # if not song_info:
-                    #     return await ctx.send("can't find the song")
-                    #
-                    # await ctx.send('-> Song added to the queue : {}'.format(song_info['title']))
-                    self.music_queue.append(song_info)
+            async def process_item(item_):
+                song_info = YTDLSource.search_yt(item_)
+                # the check below will be ture if search_yt run through an Exception
+                if not song_info:
+                    return await ctx.send("can't find the song")
 
-                thread = threading.Thread(target=presses)
-                thread.start()
+                await ctx.send('-> Song added to the queue : {}'.format(song_info['title']))
+                self.music_queue.append(song_info)
 
-            for thread in thread_list:
-                thread.join()
+            await asyncio.gather(*(process_item(item) for item in query[1:-1]))
+
+
+
 
     def play_next(self, error, go_next, ctx):
         if error:

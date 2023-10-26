@@ -16,7 +16,7 @@ Before you start using this bot manager, make sure you have the following prereq
 1. Clone this repository to your local machine:
 
     ```shell
-    git https://github.com/A-freedom/discord_music_bot
+    git clone https://github.com/A-freedom/discord_music_bot
     ```
 
 2. Create a file named `env.py` in the project root directory with the following content:

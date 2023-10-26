@@ -1,6 +1,4 @@
 import asyncio
-import threading
-
 import discord
 from discord.ext import commands
 

@@ -1,7 +1,8 @@
-import discord
-import yt_dlp
 import asyncio
 from pathlib import Path
+
+import discord
+import yt_dlp
 
 # Define the output folder for downloaded files
 output_folder = Path("downloaded/youtube")
@@ -34,10 +35,27 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.url = ""
 
     @classmethod
-    async def fetch_from_url(cls, url, *, loop=None, stream=False):
-        loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-        if 'entries' in data:
-            data = data['entries'][0]
-        filename = data['id'] if stream else ytdl.prepare_filename(data)
-        return [filename, data['title']]
+    def fetch(cls, item, *,stream=False):
+        try:
+            data = ytdl.extract_info(item, download=True)
+            if 'entries' in data:
+                data = data['entries'][0]
+            filename = data['id'] if stream else ytdl.prepare_filename(data)
+        except Exception:
+            # TODO log the error
+            return False
+
+        return filename
+
+    @classmethod
+    def search_yt(cls, item):
+        # noinspection PyBroadException
+        try:
+            data = ytdl.extract_info(f"ytsearch:{item}", download=False)
+            if 'entries' in data:
+                data = data['entries'][0]
+        except Exception:
+            # TODO log the error
+            return False
+
+        return {'url': data['original_url'], 'title': data['title']}

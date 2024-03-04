@@ -8,6 +8,6 @@ RUN pip3 install -r requirements.txt
 
 COPY . .
 
-RUN apt-get update && apt-get install -y ffmpeg
+RUN apt update && apt install -y ffmpeg
 
 CMD [ "python3", "main.py"]
